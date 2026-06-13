@@ -225,7 +225,7 @@
                 maxlength="16"
                 autocomplete="off"
             >
-            <button onclick="checkUsername()">Check</button>
+            <button onclick="window.checkUsername()">Check</button>
         </div>
 
         <div id="spinner" class="spinner"></div>
@@ -244,49 +244,34 @@
     </div>
 
     <script>
-        // Popular Minecraft usernames that are taken
-        var takenUsernames = [
-            'steve', 'alex', 'notch', 'herobrine', 'admin', 'owner', 
-            'minecraft', 'mojang', 'player', 'user', 'test', 'hacker',
-            'noob', 'pro', 'tryhard', 'builder', 'gamer', 'ninja',
-            'dragon', 'creeper', 'skeleton', 'zombie', 'enderman',
-            'admin123', 'minecrafter', 'blocky', 'pixel', 'crafty',
-            'spelunky', 'diamond', 'gold', 'iron', 'dirt', 'grass',
-            'server', 'world', 'spawn', 'cave', 'nether', 'end',
-            'ender', 'wither', 'boss', 'king', 'queen', 'prince',
-            'legend', 'master', 'expert', 'champion', 'warrior'
-        ];
+        window.takenUsernames = ['steve', 'alex', 'notch', 'herobrine', 'admin', 'owner', 'minecraft', 'mojang', 'player', 'user', 'test', 'hacker', 'noob', 'pro', 'tryhard', 'builder', 'gamer', 'ninja', 'dragon', 'creeper', 'skeleton', 'zombie', 'enderman', 'admin123', 'minecrafter', 'blocky', 'pixel', 'crafty', 'spelunky', 'diamond', 'gold', 'iron', 'dirt', 'grass', 'server', 'world', 'spawn', 'cave', 'nether', 'end', 'ender', 'wither', 'boss', 'king', 'queen', 'prince', 'legend', 'master', 'expert', 'champion', 'warrior'];
+        window.searchHistory = [];
 
-        var usernameInput = document.getElementById('username');
-        var resultDiv = document.getElementById('result');
-        var spinner = document.getElementById('spinner');
-        var historyDiv = document.getElementById('history');
-        var historyList = document.getElementById('historyList');
-
-        var searchHistory = [];
-
-        function loadHistory() {
+        window.loadHistory = function() {
             try {
                 var saved = localStorage.getItem('isittakenHistory');
                 if (saved) {
-                    searchHistory = JSON.parse(saved);
-                    updateHistoryDisplay();
+                    window.searchHistory = JSON.parse(saved);
+                    window.updateHistoryDisplay();
                 }
             } catch (e) {
                 console.log('Could not load history');
             }
-        }
+        };
 
-        function saveHistory() {
+        window.saveHistory = function() {
             try {
-                localStorage.setItem('isittakenHistory', JSON.stringify(searchHistory.slice(0, 10)));
+                localStorage.setItem('isittakenHistory', JSON.stringify(window.searchHistory.slice(0, 10)));
             } catch (e) {
                 console.log('Could not save history');
             }
-        }
+        };
 
-        function updateHistoryDisplay() {
-            if (searchHistory.length === 0) {
+        window.updateHistoryDisplay = function() {
+            var historyDiv = document.getElementById('history');
+            var historyList = document.getElementById('historyList');
+            
+            if (window.searchHistory.length === 0) {
                 historyDiv.style.display = 'none';
                 return;
             }
@@ -294,62 +279,67 @@
             historyDiv.style.display = 'block';
             historyList.innerHTML = '';
 
-            for (var i = 0; i < searchHistory.length; i++) {
-                var item = searchHistory[i];
+            for (var i = 0; i < window.searchHistory.length; i++) {
+                var item = window.searchHistory[i];
                 var historyItem = document.createElement('div');
                 historyItem.className = 'history-item ' + item.status;
                 historyItem.textContent = item.username + ' - ' + (item.status === 'taken' ? '❌' : '✅');
                 historyItem.onclick = (function(username) {
                     return function() {
-                        usernameInput.value = username;
-                        checkUsername();
+                        document.getElementById('username').value = username;
+                        window.checkUsername();
                     };
                 })(item.username);
                 historyList.appendChild(historyItem);
             }
-        }
+        };
 
-        function showResult(text, type) {
+        window.showResult = function(text, type) {
+            var resultDiv = document.getElementById('result');
             var className = 'result show ' + type;
             resultDiv.className = className;
             var icon = type === 'available' ? '✅' : type === 'taken' ? '❌' : '⚠️';
             resultDiv.innerHTML = '<div class="result-icon">' + icon + '</div><div class="result-text">' + text + '</div>';
-        }
+        };
 
-        function addToHistory(username, status) {
+        window.addToHistory = function(username, status) {
             var index = -1;
-            for (var i = 0; i < searchHistory.length; i++) {
-                if (searchHistory[i].username === username) {
+            for (var i = 0; i < window.searchHistory.length; i++) {
+                if (window.searchHistory[i].username === username) {
                     index = i;
                     break;
                 }
             }
             
             if (index !== -1) {
-                searchHistory.splice(index, 1);
+                window.searchHistory.splice(index, 1);
             }
             
-            searchHistory.unshift({ username: username, status: status });
-            searchHistory = searchHistory.slice(0, 10);
-            saveHistory();
-            updateHistoryDisplay();
-        }
+            window.searchHistory.unshift({ username: username, status: status });
+            window.searchHistory = window.searchHistory.slice(0, 10);
+            window.saveHistory();
+            window.updateHistoryDisplay();
+        };
 
-        function checkUsername() {
+        window.checkUsername = function() {
+            var usernameInput = document.getElementById('username');
+            var spinner = document.getElementById('spinner');
+            var resultDiv = document.getElementById('result');
+            
             var username = usernameInput.value.trim().toLowerCase();
 
             if (!username) {
-                showResult('Please enter a username', 'error');
+                window.showResult('Please enter a username', 'error');
                 return;
             }
 
             if (username.length < 3 || username.length > 16) {
-                showResult('Username must be between 3 and 16 characters', 'error');
+                window.showResult('Username must be between 3 and 16 characters', 'error');
                 return;
             }
 
             if (!/^[a-z0-9_]+$/i.test(username)) {
-                showResult('Username can only contain letters, numbers, and underscores', 'error');
+                window.showResult('Username can only contain letters, numbers, and underscores', 'error');
                 return;
             }
 
@@ -359,25 +349,25 @@
             setTimeout(function() {
                 spinner.classList.remove('show');
 
-                var isTaken = takenUsernames.indexOf(username) !== -1;
+                var isTaken = window.takenUsernames.indexOf(username) !== -1;
 
                 if (isTaken) {
-                    showResult('"' + username + '" is taken', 'taken');
-                    addToHistory(username, 'taken');
+                    window.showResult('"' + username + '" is taken', 'taken');
+                    window.addToHistory(username, 'taken');
                 } else {
-                    showResult('"' + username + '" is available!', 'available');
-                    addToHistory(username, 'available');
+                    window.showResult('"' + username + '" is available!', 'available');
+                    window.addToHistory(username, 'available');
                 }
             }, 800);
-        }
+        };
 
-        usernameInput.addEventListener('keypress', function(e) {
+        document.getElementById('username').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                checkUsername();
+                window.checkUsername();
             }
         });
 
-        loadHistory();
+        window.loadHistory();
     </script>
 </body>
 </html>
