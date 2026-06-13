@@ -137,12 +137,6 @@
             font-weight: 600;
         }
 
-        .result-username {
-            font-size: 0.95em;
-            margin-top: 8px;
-            opacity: 0.9;
-        }
-
         .loading {
             display: none;
             text-align: center;
@@ -195,6 +189,12 @@
             border-radius: 20px;
             font-size: 0.85em;
             color: #555;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            transform: scale(1.05);
         }
 
         .history-item.available {
@@ -274,6 +274,10 @@
                 const historyItem = document.createElement('div');
                 historyItem.className = `history-item ${item.status}`;
                 historyItem.textContent = `${item.username} - ${item.status === 'taken' ? '❌ Taken' : '✅ Available'}`;
+                historyItem.onclick = () => {
+                    usernameInput.value = item.username;
+                    checkUsername();
+                };
                 historyList.appendChild(historyItem);
             });
         }
@@ -302,45 +306,28 @@
             resultDiv.classList.remove('show');
 
             try {
-                // Try multiple API endpoints for reliability
+                // Use multiple CORS proxies as fallback
+                const proxies = [
+                    `https://cors.bridged.cc/https://api.mojang.com/users/profiles/minecraft/${username}`,
+                    `https://api.allorigins.win/raw?url=https://api.mojang.com/users/profiles/minecraft/${username}`,
+                ];
+
                 let isAvailable = null;
-                let error = null;
 
-                // First try: Mojang API
-                try {
-                    const response1 = await fetch(`https://api.mojang.com/users/profiles/minecraft/${username}`, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
-
-                    if (response1.ok) {
-                        isAvailable = false; // Username is taken
-                    } else if (response1.status === 404) {
-                        isAvailable = true; // Username is available
-                    }
-                } catch (e1) {
-                    error = e1;
-                }
-
-                // If first API fails, try alternative
-                if (isAvailable === null && error) {
+                for (let proxy of proxies) {
                     try {
-                        const response2 = await fetch(`https://api.ashcon.app/mojang/v2/user/${username}`, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
-
-                        if (response2.ok) {
+                        const response = await fetch(proxy);
+                        
+                        if (response.ok) {
                             isAvailable = false; // Username is taken
-                        } else if (response2.status === 404) {
+                            break;
+                        } else if (response.status === 404) {
                             isAvailable = true; // Username is available
+                            break;
                         }
-                    } catch (e2) {
-                        console.error('Second API failed:', e2);
+                    } catch (e) {
+                        console.log('Proxy failed:', proxy);
+                        continue;
                     }
                 }
 
@@ -353,7 +340,7 @@
                     showResult(`✅ "${username}" is available!`, 'available');
                     addToHistory(username, 'available');
                 } else {
-                    showResult('Unable to check username. Please try again later.', 'error');
+                    showResult('Unable to check username. Servers may be down. Try again later!', 'error');
                 }
             } catch (error) {
                 loadingDiv.classList.remove('show');
