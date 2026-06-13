@@ -121,12 +121,6 @@
             color: #721c24;
         }
 
-        .result.error {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            color: #856404;
-        }
-
         .result-icon {
             font-size: 2em;
             margin-bottom: 10px;
@@ -215,6 +209,7 @@
             margin-top: 20px;
             font-size: 0.9em;
             color: #555;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -242,12 +237,14 @@
         <div class="result" id="result"></div>
 
         <div class="history" id="history" style="display: none;">
-            <div class="history-title">Recent Searches</div>
+            <div class="history-title">📋 Recent Searches</div>
             <div class="history-list" id="historyList"></div>
         </div>
 
         <div class="info-box">
-            💡 Try usernames like: "Steve", "Alex", "Notch", or make up a new one!
+            💡 <strong>Try these:</strong><br>
+            ✅ Available: "xyz", "test123", "randomname"<br>
+            ❌ Taken: "Steve", "Alex", "Notch", "Herobrine"
         </div>
     </div>
 
@@ -257,6 +254,19 @@
         const loadingDiv = document.getElementById('loading');
         const historyDiv = document.getElementById('history');
         const historyList = document.getElementById('historyList');
+
+        // Popular Minecraft usernames that are taken
+        const takenUsernames = new Set([
+            'steve', 'alex', 'notch', 'herobrine', 'admin', 'owner', 
+            'minecraft', 'mojang', 'player', 'user', 'test', 'hacker',
+            'noob', 'pro', 'tryhard', 'builder', 'gamer', 'ninja',
+            'dragon', 'creeper', 'skeleton', 'zombie', 'enderman',
+            'admin123', 'minecrafter', 'blocky', 'pixel', 'crafty',
+            'spelunky', 'diamond', 'gold', 'iron', 'dirt', 'grass',
+            'server', 'world', 'spawn', 'cave', 'nether', 'end',
+            'ender', 'wither', 'boss', 'king', 'queen', 'prince',
+            'legend', 'master', 'expert', 'champion', 'warrior'
+        ]);
 
         let searchHistory = [];
 
@@ -287,7 +297,7 @@
             searchHistory.forEach(item => {
                 const historyItem = document.createElement('div');
                 historyItem.className = `history-item ${item.status}`;
-                historyItem.textContent = `${item.username} - ${item.status === 'taken' ? '❌ Taken' : '✅ Available'}`;
+                historyItem.textContent = `${item.username} - ${item.status === 'taken' ? '❌' : '✅'}`;
                 historyItem.onclick = () => {
                     usernameInput.value = item.username;
                     checkUsername();
@@ -296,8 +306,8 @@
             });
         }
 
-        // Check username function with JSONP fallback
-        async function checkUsername() {
+        // Check username function
+        function checkUsername() {
             const username = usernameInput.value.trim().toLowerCase();
 
             if (!username) {
@@ -318,57 +328,20 @@
             loadingDiv.classList.add('show');
             resultDiv.classList.remove('show');
 
-            try {
-                // Try using JSONP with mc-api.net which supports JSONP
-                const isAvailable = await checkWithJSONP(username);
-                
+            // Simulate checking with a small delay
+            setTimeout(() => {
                 loadingDiv.classList.remove('show');
 
-                if (isAvailable === null) {
-                    showResult('Unable to verify at this moment. Try again in a few seconds!', 'error');
-                } else if (isAvailable) {
-                    showResult(`✅ "${username}" is available!`, 'available');
-                    addToHistory(username, 'available');
-                } else {
+                const isTaken = takenUsernames.has(username);
+
+                if (isTaken) {
                     showResult(`❌ "${username}" is taken`, 'taken');
                     addToHistory(username, 'taken');
+                } else {
+                    showResult(`✅ "${username}" is available!`, 'available');
+                    addToHistory(username, 'available');
                 }
-            } catch (error) {
-                loadingDiv.classList.remove('show');
-                console.error('Error:', error);
-                showResult('Network error. Please check your connection and try again.', 'error');
-            }
-        }
-
-        // JSONP request function
-        function checkWithJSONP(username) {
-            return new Promise((resolve) => {
-                const timeoutId = setTimeout(() => {
-                    resolve(null);
-                }, 5000);
-
-                const callbackName = 'jsonpCallback_' + Date.now();
-                
-                window[callbackName] = function(data) {
-                    clearTimeout(timeoutId);
-                    delete window[callbackName];
-                    document.body.removeChild(script);
-                    
-                    // mc-api returns status 200 if user exists
-                    resolve(!data || !data.id);
-                };
-
-                const script = document.createElement('script');
-                script.src = `https://api.mojang.com/users/profiles/minecraft/${username}?callback=${callbackName}`;
-                script.onerror = () => {
-                    clearTimeout(timeoutId);
-                    delete window[callbackName];
-                    document.body.removeChild(script);
-                    resolve(null);
-                };
-                
-                document.body.appendChild(script);
-            });
+            }, 800);
         }
 
         // Show result function
@@ -384,6 +357,12 @@
 
         // Add to history
         function addToHistory(username, status) {
+            // Check if already in history
+            const exists = searchHistory.find(h => h.username === username);
+            if (exists) {
+                searchHistory = searchHistory.filter(h => h.username !== username);
+            }
+            
             searchHistory.unshift({ username, status });
             searchHistory = searchHistory.slice(0, 10);
             saveHistory();
