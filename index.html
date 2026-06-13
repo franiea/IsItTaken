@@ -121,6 +121,12 @@
             color: #721c24;
         }
 
+        .result.error {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+        }
+
         .result-icon {
             font-size: 2em;
             margin-bottom: 10px;
@@ -239,7 +245,7 @@
 
     <script>
         // Popular Minecraft usernames that are taken
-        const takenUsernames = [
+        var takenUsernames = [
             'steve', 'alex', 'notch', 'herobrine', 'admin', 'owner', 
             'minecraft', 'mojang', 'player', 'user', 'test', 'hacker',
             'noob', 'pro', 'tryhard', 'builder', 'gamer', 'ninja',
@@ -251,17 +257,17 @@
             'legend', 'master', 'expert', 'champion', 'warrior'
         ];
 
-        const usernameInput = document.getElementById('username');
-        const resultDiv = document.getElementById('result');
-        const spinner = document.getElementById('spinner');
-        const historyDiv = document.getElementById('history');
-        const historyList = document.getElementById('historyList');
+        var usernameInput = document.getElementById('username');
+        var resultDiv = document.getElementById('result');
+        var spinner = document.getElementById('spinner');
+        var historyDiv = document.getElementById('history');
+        var historyList = document.getElementById('historyList');
 
-        let searchHistory = [];
+        var searchHistory = [];
 
         function loadHistory() {
             try {
-                const saved = localStorage.getItem('isittakenHistory');
+                var saved = localStorage.getItem('isittakenHistory');
                 if (saved) {
                     searchHistory = JSON.parse(saved);
                     updateHistoryDisplay();
@@ -288,58 +294,26 @@
             historyDiv.style.display = 'block';
             historyList.innerHTML = '';
 
-            searchHistory.forEach(item => {
-                const historyItem = document.createElement('div');
+            for (var i = 0; i < searchHistory.length; i++) {
+                var item = searchHistory[i];
+                var historyItem = document.createElement('div');
                 historyItem.className = 'history-item ' + item.status;
                 historyItem.textContent = item.username + ' - ' + (item.status === 'taken' ? '❌' : '✅');
-                historyItem.onclick = function() {
-                    usernameInput.value = item.username;
-                    checkUsername();
-                };
+                historyItem.onclick = (function(username) {
+                    return function() {
+                        usernameInput.value = username;
+                        checkUsername();
+                    };
+                })(item.username);
                 historyList.appendChild(historyItem);
-            });
+            }
         }
 
-        function checkUsername() {
-            const username = usernameInput.value.trim().toLowerCase();
-
-            if (!username) {
-                showResult('Please enter a username', false);
-                return;
-            }
-
-            if (username.length < 3 || username.length > 16) {
-                showResult('Username must be between 3 and 16 characters', false);
-                return;
-            }
-
-            if (!/^[a-z0-9_]+$/i.test(username)) {
-                showResult('Username can only contain letters, numbers, and underscores', false);
-                return;
-            }
-
-            spinner.classList.add('show');
-            resultDiv.classList.remove('show');
-
-            setTimeout(function() {
-                spinner.classList.remove('show');
-
-                var isTaken = takenUsernames.indexOf(username) !== -1;
-
-                if (isTaken) {
-                    showResult('❌ "' + username + '" is taken', true);
-                    addToHistory(username, 'taken');
-                } else {
-                    showResult('✅ "' + username + '" is available!', false);
-                    addToHistory(username, 'available');
-                }
-            }, 800);
-        }
-
-        function showResult(text, isTaken) {
-            var className = isTaken ? 'result show taken' : 'result show available';
+        function showResult(text, type) {
+            var className = 'result show ' + type;
             resultDiv.className = className;
-            resultDiv.innerHTML = '<div class="result-icon">' + (isTaken ? '❌' : '✅') + '</div><div class="result-text">' + text + '</div>';
+            var icon = type === 'available' ? '✅' : type === 'taken' ? '❌' : '⚠️';
+            resultDiv.innerHTML = '<div class="result-icon">' + icon + '</div><div class="result-text">' + text + '</div>';
         }
 
         function addToHistory(username, status) {
@@ -359,6 +333,42 @@
             searchHistory = searchHistory.slice(0, 10);
             saveHistory();
             updateHistoryDisplay();
+        }
+
+        function checkUsername() {
+            var username = usernameInput.value.trim().toLowerCase();
+
+            if (!username) {
+                showResult('Please enter a username', 'error');
+                return;
+            }
+
+            if (username.length < 3 || username.length > 16) {
+                showResult('Username must be between 3 and 16 characters', 'error');
+                return;
+            }
+
+            if (!/^[a-z0-9_]+$/i.test(username)) {
+                showResult('Username can only contain letters, numbers, and underscores', 'error');
+                return;
+            }
+
+            spinner.classList.add('show');
+            resultDiv.classList.remove('show');
+
+            setTimeout(function() {
+                spinner.classList.remove('show');
+
+                var isTaken = takenUsernames.indexOf(username) !== -1;
+
+                if (isTaken) {
+                    showResult('"' + username + '" is taken', 'taken');
+                    addToHistory(username, 'taken');
+                } else {
+                    showResult('"' + username + '" is available!', 'available');
+                    addToHistory(username, 'available');
+                }
+            }, 800);
         }
 
         usernameInput.addEventListener('keypress', function(e) {
