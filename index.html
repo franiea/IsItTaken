@@ -131,26 +131,19 @@
             font-weight: 600;
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            color: #667eea;
-            font-weight: 600;
-            margin-top: 20px;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
         .spinner {
+            display: none;
             border: 3px solid #f3f3f3;
             border-top: 3px solid #667eea;
             border-radius: 50%;
             width: 30px;
             height: 30px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            margin: 10px auto;
+        }
+
+        .spinner.show {
+            display: block;
         }
 
         @keyframes spin {
@@ -229,11 +222,7 @@
             <button onclick="checkUsername()">Check</button>
         </div>
 
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Checking username...</p>
-        </div>
-
+        <div id="spinner" class="spinner"></div>
         <div class="result" id="result"></div>
 
         <div class="history" id="history" style="display: none;">
@@ -249,14 +238,8 @@
     </div>
 
     <script>
-        const usernameInput = document.getElementById('username');
-        const resultDiv = document.getElementById('result');
-        const loadingDiv = document.getElementById('loading');
-        const historyDiv = document.getElementById('history');
-        const historyList = document.getElementById('historyList');
-
         // Popular Minecraft usernames that are taken
-        const takenUsernames = new Set([
+        const takenUsernames = [
             'steve', 'alex', 'notch', 'herobrine', 'admin', 'owner', 
             'minecraft', 'mojang', 'player', 'user', 'test', 'hacker',
             'noob', 'pro', 'tryhard', 'builder', 'gamer', 'ninja',
@@ -266,25 +249,36 @@
             'server', 'world', 'spawn', 'cave', 'nether', 'end',
             'ender', 'wither', 'boss', 'king', 'queen', 'prince',
             'legend', 'master', 'expert', 'champion', 'warrior'
-        ]);
+        ];
+
+        const usernameInput = document.getElementById('username');
+        const resultDiv = document.getElementById('result');
+        const spinner = document.getElementById('spinner');
+        const historyDiv = document.getElementById('history');
+        const historyList = document.getElementById('historyList');
 
         let searchHistory = [];
 
-        // Load history from localStorage
         function loadHistory() {
-            const saved = localStorage.getItem('isittakenHistory');
-            if (saved) {
-                searchHistory = JSON.parse(saved);
-                updateHistoryDisplay();
+            try {
+                const saved = localStorage.getItem('isittakenHistory');
+                if (saved) {
+                    searchHistory = JSON.parse(saved);
+                    updateHistoryDisplay();
+                }
+            } catch (e) {
+                console.log('Could not load history');
             }
         }
 
-        // Save history to localStorage
         function saveHistory() {
-            localStorage.setItem('isittakenHistory', JSON.stringify(searchHistory.slice(0, 10)));
+            try {
+                localStorage.setItem('isittakenHistory', JSON.stringify(searchHistory.slice(0, 10)));
+            } catch (e) {
+                console.log('Could not save history');
+            }
         }
 
-        // Update history display
         function updateHistoryDisplay() {
             if (searchHistory.length === 0) {
                 historyDiv.style.display = 'none';
@@ -296,9 +290,9 @@
 
             searchHistory.forEach(item => {
                 const historyItem = document.createElement('div');
-                historyItem.className = `history-item ${item.status}`;
-                historyItem.textContent = `${item.username} - ${item.status === 'taken' ? '❌' : '✅'}`;
-                historyItem.onclick = () => {
+                historyItem.className = 'history-item ' + item.status;
+                historyItem.textContent = item.username + ' - ' + (item.status === 'taken' ? '❌' : '✅');
+                historyItem.onclick = function() {
                     usernameInput.value = item.username;
                     checkUsername();
                 };
@@ -306,77 +300,73 @@
             });
         }
 
-        // Check username function
         function checkUsername() {
             const username = usernameInput.value.trim().toLowerCase();
 
             if (!username) {
-                showResult('Please enter a username', 'error');
+                showResult('Please enter a username', false);
                 return;
             }
 
             if (username.length < 3 || username.length > 16) {
-                showResult('Username must be between 3 and 16 characters', 'error');
+                showResult('Username must be between 3 and 16 characters', false);
                 return;
             }
 
             if (!/^[a-z0-9_]+$/i.test(username)) {
-                showResult('Username can only contain letters, numbers, and underscores', 'error');
+                showResult('Username can only contain letters, numbers, and underscores', false);
                 return;
             }
 
-            loadingDiv.classList.add('show');
+            spinner.classList.add('show');
             resultDiv.classList.remove('show');
 
-            // Simulate checking with a small delay
-            setTimeout(() => {
-                loadingDiv.classList.remove('show');
+            setTimeout(function() {
+                spinner.classList.remove('show');
 
-                const isTaken = takenUsernames.has(username);
+                var isTaken = takenUsernames.indexOf(username) !== -1;
 
                 if (isTaken) {
-                    showResult(`❌ "${username}" is taken`, 'taken');
+                    showResult('❌ "' + username + '" is taken', true);
                     addToHistory(username, 'taken');
                 } else {
-                    showResult(`✅ "${username}" is available!`, 'available');
+                    showResult('✅ "' + username + '" is available!', false);
                     addToHistory(username, 'available');
                 }
             }, 800);
         }
 
-        // Show result function
-        function showResult(text, status) {
-            resultDiv.className = `result show ${status}`;
-            resultDiv.innerHTML = `
-                <div class="result-icon">
-                    ${status === 'available' ? '✅' : status === 'taken' ? '❌' : '⚠️'}
-                </div>
-                <div class="result-text">${text}</div>
-            `;
+        function showResult(text, isTaken) {
+            var className = isTaken ? 'result show taken' : 'result show available';
+            resultDiv.className = className;
+            resultDiv.innerHTML = '<div class="result-icon">' + (isTaken ? '❌' : '✅') + '</div><div class="result-text">' + text + '</div>';
         }
 
-        // Add to history
         function addToHistory(username, status) {
-            // Check if already in history
-            const exists = searchHistory.find(h => h.username === username);
-            if (exists) {
-                searchHistory = searchHistory.filter(h => h.username !== username);
+            var index = -1;
+            for (var i = 0; i < searchHistory.length; i++) {
+                if (searchHistory[i].username === username) {
+                    index = i;
+                    break;
+                }
             }
             
-            searchHistory.unshift({ username, status });
+            if (index !== -1) {
+                searchHistory.splice(index, 1);
+            }
+            
+            searchHistory.unshift({ username: username, status: status });
             searchHistory = searchHistory.slice(0, 10);
             saveHistory();
             updateHistoryDisplay();
         }
 
-        // Allow Enter key to check
-        usernameInput.addEventListener('keypress', (e) => {
+        usernameInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 checkUsername();
             }
         });
 
-        // Load history on page load
         loadHistory();
     </script>
 </body>
