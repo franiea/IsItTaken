@@ -206,6 +206,16 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        .info-box {
+            background: #f0f0f0;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -234,6 +244,10 @@
         <div class="history" id="history" style="display: none;">
             <div class="history-title">Recent Searches</div>
             <div class="history-list" id="historyList"></div>
+        </div>
+
+        <div class="info-box">
+            💡 Try usernames like: "Steve", "Alex", "Notch", or make up a new one!
         </div>
     </div>
 
@@ -282,7 +296,7 @@
             });
         }
 
-        // Check username function
+        // Check username function with JSONP fallback
         async function checkUsername() {
             const username = usernameInput.value.trim().toLowerCase();
 
@@ -296,7 +310,6 @@
                 return;
             }
 
-            // Check if valid Minecraft username characters
             if (!/^[a-z0-9_]+$/i.test(username)) {
                 showResult('Username can only contain letters, numbers, and underscores', 'error');
                 return;
@@ -306,47 +319,56 @@
             resultDiv.classList.remove('show');
 
             try {
-                // Use multiple CORS proxies as fallback
-                const proxies = [
-                    `https://cors.bridged.cc/https://api.mojang.com/users/profiles/minecraft/${username}`,
-                    `https://api.allorigins.win/raw?url=https://api.mojang.com/users/profiles/minecraft/${username}`,
-                ];
-
-                let isAvailable = null;
-
-                for (let proxy of proxies) {
-                    try {
-                        const response = await fetch(proxy);
-                        
-                        if (response.ok) {
-                            isAvailable = false; // Username is taken
-                            break;
-                        } else if (response.status === 404) {
-                            isAvailable = true; // Username is available
-                            break;
-                        }
-                    } catch (e) {
-                        console.log('Proxy failed:', proxy);
-                        continue;
-                    }
-                }
-
+                // Try using JSONP with mc-api.net which supports JSONP
+                const isAvailable = await checkWithJSONP(username);
+                
                 loadingDiv.classList.remove('show');
 
-                if (isAvailable === false) {
-                    showResult(`❌ "${username}" is taken`, 'taken');
-                    addToHistory(username, 'taken');
-                } else if (isAvailable === true) {
+                if (isAvailable === null) {
+                    showResult('Unable to verify at this moment. Try again in a few seconds!', 'error');
+                } else if (isAvailable) {
                     showResult(`✅ "${username}" is available!`, 'available');
                     addToHistory(username, 'available');
                 } else {
-                    showResult('Unable to check username. Servers may be down. Try again later!', 'error');
+                    showResult(`❌ "${username}" is taken`, 'taken');
+                    addToHistory(username, 'taken');
                 }
             } catch (error) {
                 loadingDiv.classList.remove('show');
                 console.error('Error:', error);
                 showResult('Network error. Please check your connection and try again.', 'error');
             }
+        }
+
+        // JSONP request function
+        function checkWithJSONP(username) {
+            return new Promise((resolve) => {
+                const timeoutId = setTimeout(() => {
+                    resolve(null);
+                }, 5000);
+
+                const callbackName = 'jsonpCallback_' + Date.now();
+                
+                window[callbackName] = function(data) {
+                    clearTimeout(timeoutId);
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    
+                    // mc-api returns status 200 if user exists
+                    resolve(!data || !data.id);
+                };
+
+                const script = document.createElement('script');
+                script.src = `https://api.mojang.com/users/profiles/minecraft/${username}?callback=${callbackName}`;
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    resolve(null);
+                };
+                
+                document.body.appendChild(script);
+            });
         }
 
         // Show result function
@@ -363,7 +385,7 @@
         // Add to history
         function addToHistory(username, status) {
             searchHistory.unshift({ username, status });
-            searchHistory = searchHistory.slice(0, 10); // Keep only 10 most recent
+            searchHistory = searchHistory.slice(0, 10);
             saveHistory();
             updateHistoryDisplay();
         }
